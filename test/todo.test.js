@@ -7,6 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const store = require('../bin/todo.js');
+const fixtures = require('./fixtures.js');
 
 function withTempStore(fn) {
   return () => {
@@ -53,3 +54,11 @@ test('ids restart from 1 when the store is empty', withTempStore(() => {
 test('missing store lists as empty', withTempStore(() => {
   assert.deepEqual(store.listItems(), []);
 }));
+
+test('fixtures load as item arrays', () => {
+  const names = fixtures.fixtureNames();
+  assert.ok(names.includes('seed-one.todo.json'), 'seed-one fixture exists');
+  for (const name of names) {
+    assert.ok(Array.isArray(fixtures.fixtureItems(name)), `${name} loads as items`);
+  }
+});
