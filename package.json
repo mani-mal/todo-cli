@@ -5,6 +5,6 @@
   "description": "A tiny to-do list CLI using only Node built-in modules",
   "bin": { "todo": "bin/todo.js" },
   "scripts": {
-    "test": "node --test test/"
+    "test": "node --test test/*.test.js"
   }
 }
