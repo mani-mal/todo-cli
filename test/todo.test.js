@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const os = require('node:os');
 const fs = require('node:fs');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 
 const store = require('../bin/todo.js');
 const fixtures = require('./fixtures.js');
@@ -61,4 +62,56 @@ test('fixtures load as item arrays', () => {
   for (const name of names) {
     assert.ok(Array.isArray(fixtures.fixtureItems(name)), `${name} loads as items`);
   }
+});
+
+function runCli(args) {
+  const file = process.env.TODO_STORE;
+  if (!file) {
+    throw new Error('runCli requires an active temp store (use withTempStore)');
+  }
+  const result = spawnSync(process.execPath, ['bin/todo.js', ...args], {
+    cwd: path.join(__dirname, '..'),
+    encoding: 'utf8',
+    env: { ...process.env, TODO_STORE: file },
+  });
+  return {
+    logs: (result.stdout || '').split('\n').filter((line) => line !== ''),
+    errors: (result.stderr || '').split('\n').filter((line) => line !== ''),
+    status: result.status,
+  };
+}
+
+test('list --done lists only completed items', withTempStore(() => {
+  const added = store.addItem('pending task');
+  store.save([
+    { ...added, title: 'finished task', done: true },
+  ]);
+  const { logs } = runCli(['list', '--done']);
+  assert.equal(logs.length, 1);
+  assert.match(logs[0], /finished task/);
+  assert.doesNotMatch(logs[0], /pending task/);
+}));
+
+test('list --done prints (empty) when nothing is completed', withTempStore(() => {
+  store.addItem('pending task');
+  const { logs } = runCli(['list', '--done']);
+  assert.deepEqual(logs, ['(empty)']);
+}));
+
+test('list without --done still shows all items', withTempStore(() => {
+  const added = store.addItem('pending task');
+  store.save([
+    { ...added, title: 'finished task', done: true },
+    ...store.load().map((i) => ({ ...i, id: i.id + 1 })),
+  ]);
+  const { logs } = runCli(['list']);
+  assert.equal(logs.length, 2);
+  assert.match(logs[0], /finished task/);
+  assert.match(logs[1], /pending task/);
+}));
+
+test('list --done uses the store fixtures shape', () => {
+  const items = fixtures.fixtureItems('seed-one.todo.json');
+  const doneOnly = items.filter((item) => item.done === true);
+  assert.deepEqual(doneOnly, []);
 });
