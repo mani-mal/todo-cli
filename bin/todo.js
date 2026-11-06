@@ -50,7 +50,9 @@ if (require.main === module) {
     const item = addItem(title);
     console.log(`added #${item.id} ${item.title}`);
   } else if (command === 'list') {
-    const items = listItems();
+    const doneOnly = rest.includes('--done');
+    const all = listItems();
+    const items = doneOnly ? all.filter((item) => item.done === true) : all;
     if (items.length === 0) {
       console.log('(empty)');
     } else {
